@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset='utf-8' />
+    <title>National Communication</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+    <!--Mapbox-->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.6.1/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v1.6.1/mapbox-gl.css" rel="stylesheet" />
+
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .map-overlay {
+            font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            position: relative;
+            width: 30%;
+            top: 0;
+            left: 0;
+            padding: 20px;
+        }
+
+        .map-overlay .map-overlay-inner {
+            /*background-color: #fff;*/
+            color: white;
+            /*box-shadow: 0 1px 2px #fff;*/
+            border-radius: 10px;
+            /*padding: 20px;*/
+            margin-bottom: 20px;
+        }
+
+        .map-overlay table {
+            border: none;
+            width: 20%;
+        }
+
+        .map-overlay h2 {
+            line-height: 24px;
+            display: block;
+            margin: 0 0 10px;
+        }
+
+        .map-overlay-middle {
+            font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            color: white;
+            position: absolute;
+            width: 20%;
+            bottom: 50%;
+            left: 0;
+            padding: 20px;
+        }
+
+        .map-overlay h3 {
+            line-height: 18px;
+            display: block;
+            margin: 0 0 10px;
+        }
+
+        .map-overlay-botom {
+            font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            color: white;
+            position: absolute;
+            height: 300px;
+            width: 30%;
+            bottom: 10%;
+            left: 0;
+            padding: 20px;
+        }
+
+        .map-overlay-botom p {
+            line-height: 10 px;
+            display: block;
+            margin: 0 0 5px;
+        }
+
+        .map-overlay-botom .map-overlay-botom-inner {
+            background-color: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.20);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .map-overlay p.credit {
+            margin: 0;
+            padding: 0;
+        }
+
+    </style>
+
+</head>
+
+
+
+<body>
+    <!--Map Div-->
+    <div id='map'></div>
+    <div class="map-overlay-botom">
+        <h3 id="selectedaAREA"> Calling Activities Fluctuation Index
+        </h3>
+        <p id="AREAinfo"> Description and chart
+        </p>
+        <div id="callinginfo">
+        </div>
+    </div>
+    <div class='map-overlay-middle'>
+        <div>
+            <h2 id="laname">Hover over and select an area! </h2>
+        </div>
+    </div>
+    <div class='map-overlay top'>
+        <div class='map-overlay-inner'>
+            <h2>France Travel Seasons Month Calling Activities</h2>
+            <table>
+                <tr>
+                    <td>
+                        <input id='slider' type='range' min='0' max='3' step='1' value='0' list='tickmarks' />
+                        <datalist id="tickmarks">
+                            <option value="0" label="june">
+                            <option value="1" label="july">
+                            <option value="2" label="august">
+                            <option value="3" label="september">
+                        </datalist>
+                    </td>
+                    <td>
+                        <label id='mm'>june</label>
+                    </td>
+                </tr>
+            </table>
+            <p class="credit">This project shows the mobile phone calling patterns of 320 arrondissement in summer in 2007. Arrondissments are the third-level administrative divisions of France. Here, we investigate arrondissments' communication patterns using CAFIndex and communication flows.</p>
+            <p>CAFIndex = [ totalcalls(july+august)-totalcalls(june+september) ] / totalcalls(june+september) * 100%. </p>
+            <p>The higher CAFIndex indicates higher attraction during travel seasons and results in brigher color in the base map. </p>
+            <p> The flow map presents the communication connection between arrondissments. To see more statistics of calling activities, please click!</p>
+            <p>Mobile Phone Calling data is provided by <a href="http://www.maartenvanhoof.com/">Dr. Maarten Vanhoof</a> and can be used only for this course.</p>
+        </div>
+    </div>
+    <div id="chartContainer">
+        <script charset="utf-8" src="https://d3js.org/d3.v4.min.js"></script>
+        <script charset="utf-8" src="https://cdnjs.cloudflare.com/ajax/libs/dimple/2.3.0/dimple.latest.min.js"></script>
+    </div>
+
+
+
+    <script type="text/javascript">
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZnppbmciLCJhIjoiY2s5eHE0NW4wMDV6aDNnbjFrYWpyNmE1eSJ9.PQHJ-2XYEas7K6CpTJHf0A'; // Put your Mapbox Public Access token here
+
+        // Load a new map in the 'map' HTML div
+        var map = new mapboxgl.Map({
+            container: 'map', // container id
+            style: 'mapbox://styles/fzing/ckacr40et0qyb1iqjx2ao4xnk', // stylesheet location
+            center: [-1.00, 47.099], // starting position [lng, lat]
+            zoom: 5.5 // starting zoom
+        });
+
+
+        // Create an array of the available data months
+        var months = [
+            'june',
+            'july',
+            'august',
+            'september'
+        ]; //Use this array to change the column item in our map 
+
+        map.on('load', function() {
+            // flow data url
+            var flow_url = 'https://raw.githubusercontent.com/fuzhen-yin/CASA0003LivingCitiesGroup6/master/flowdata/june.geojson';
+
+            map.addSource('flow_source', {
+                type: 'geojson',
+                data: flow_url
+            });
+
+            // update flow data source while changing slider
+            document.getElementById('slider').addEventListener('input', function(e) {
+                mm = parseInt(e.target.value);
+                document.getElementById('mm').textContent = months[mm];
+                flow_url2 = "https://raw.githubusercontent.com/fuzhen-yin/CASA0003LivingCitiesGroup6/master/flowdata/" + String(months[mm]) + ".geojson";
+                map.getSource('flow_source').setData(flow_url2);
+            });
+
+            // add flow layer
+            map.addLayer({
+                'id': 'flow_lines',
+                'type': 'line',
+                'source': "flow_source",
+                'paint': {
+                    'line-color': '#B7E1F3',
+                    'line-width': 1,
+                    'line-dasharray': [1, 1],
+                    'line-opacity': 0.1
+                },
+            });
+
+
+            // add colored base map
+            map.addLayer({
+                id: 'FRA_surface',
+                type: 'fill',
+                source: {
+                    type: 'vector',
+                    url: 'mapbox://fzing.5vcw6mxw' // Your Mapbox tileset Map ID
+                },
+                'source-layer': 'fr_arrondissment_shp-68x5gx', // name of tilesets
+                'layout': {
+                    'visibility': 'visible'
+                },
+                paint: {
+                    'fill-color': '#fff',
+                    'fill-opacity': 0
+                }
+            });
+
+            // add hover effect to the "arrondissment" boundaries
+            map.addLayer({
+                id: 'FRA_boundaries',
+                type: 'line',
+                source: {
+                    type: 'vector',
+                    url: 'mapbox://fzing.5vcw6mxw' // Your Mapbox tileset Map ID
+                },
+                'source-layer': 'fr_arrondissment_shp-68x5gx', // name of tilesets
+                'layout': {
+                    'visibility': 'visible'
+                },
+                paint: {
+                    'line-color': '#adf',
+                    'line-width': 2
+                },
+                filter: ['==', 'arr_name', 'empty']
+            });
+
+
+            map.on('mousemove', function(e) {
+                var la = map.queryRenderedFeatures(e.point, {
+                    layers: ['FRA_surface']
+                });
+
+
+                if (la.length == 1) {
+
+                    map.setFilter('FRA_boundaries', ['==', 'arr_name', la[0].properties.arr_name]);
+                    document.getElementById('laname').innerHTML = la[0].properties.arr_name;
+
+                } else {
+                    map.setFilter('FRA_boundaries', ['==', 'arr_name', 'null']);
+                    document.getElementById('laname').innerHTML = "Hover over and select an area!";
+                }
+            });
+
+
+            map.on('click', function(e) {
+                var la = map.queryRenderedFeatures(e.point, {
+                    layers: ['FRA_surface']
+                });
+
+                if (la.length == 1) {                
+
+                    map.setFilter('flow_lines', ['==', 'start_arr_name', la[0].properties.arr_name]);
+
+                    // enableLineAnimation('flow_lines');
+                    var animationStep = 30;
+                    var step = 0;
+                    let dashArraySeq = [
+                        [0, 4, 3],
+                        [1, 4, 2],
+                        [2, 4, 1],
+                        [3, 4, 0],
+                        [0, 1, 3, 3],
+                        [0, 2, 3, 2],
+                        [0, 3, 3, 1]
+                    ];
+
+                    playStep = window.setInterval(() => {
+                        step = (step + 1) % dashArraySeq.length;
+                        map.setPaintProperty("flow_lines", 'line-dasharray', dashArraySeq[step]);
+                    }, animationStep);
+
+                    map.setPaintProperty("flow_lines", 'line-opacity', 0.8);
+                    map.setPaintProperty("flow_lines", 'line-width', ["get", "log_ac"]);
+
+
+                    // show calling information of arrondissment
+
+                    // erase previous chart 
+                    document.getElementById('callinginfo').innerHTML = "";
+
+                    document.getElementById('selectedaAREA').innerHTML = "Calls generated from " + la[0].properties.arr_name;
+                    document.getElementById('AREAinfo').innerHTML = "<p> Province: " + la[0].properties.dep_name + ".     Region: " + la[0].properties.reg_name + "</p> <p> The total calling activities in summer travel seasons july and august has increased by " + la[0].properties.TAI_per.toPrecision(4) + "% than in non-travel seasons june and september.";
+
+                    var o6 = la[0].properties.june_out;
+                    var o7 = la[0].properties.july_out;
+                    var o8 = la[0].properties.aug_out;
+                    var o9 = la[0].properties.sep_out;
+                    var d6 = la[0].properties.june_dest;
+                    var d7 = la[0].properties.july_dest;
+                    var d8 = la[0].properties.aug_dest;
+                    var d9 = la[0].properties.sep_dest;
+
+                    // create chart
+                    var chartdata = [{
+                            "Type": "Calling activities",
+                            "Month": "06",
+                            "Call count": o6
+                        },
+                        {
+                            "Type": "Calling activities",
+                            "Month": "07",
+                            "Call count": o7
+                        },
+                        {
+                            "Type": "Calling activities",
+                            "Month": "08",
+                            "Call count": o8
+                        },
+                        {
+                            "Type": "Calling activities",
+                            "Month": "09",
+                            "Call count": o9
+                        },
+                        {
+                            "Type": "Destinations",
+                            "Month": "06",
+                            "Des count": d6
+                        },
+                        {
+                            "Type": "Destinations",
+                            "Month": "07",
+                            "Des count": d7
+                        },
+                        {
+                            "Type": "Destinations",
+                            "Month": "08",
+                            "Des count": d8
+                        },
+                        {
+                            "Type": "Destinations",
+                            "Month": "09",
+                            "Des count": d9
+                        }
+                    ];
+
+                    var svg = dimple.newSvg("#callinginfo", 590, 400);
+                    var myChart = new dimple.chart(svg, chartdata);
+                    myChart.setBounds(30, 30, 200, 200);
+                    myChart.defaultColors = [
+                        new dimple.color("#FF9C98"),
+                        new dimple.color("#A6E0B9"),
+                    ];
+                    var x = myChart.addCategoryAxis("x", "Month");
+                    x.showGridlines = false;
+                    x.addOrderRule("Month");
+                    var y_ct = myChart.addMeasureAxis("y", "Call count");
+                    var y_dt = myChart.addMeasureAxis("y", "Des count");
+
+                    var s = myChart.addSeries("Calling activities", dimple.plot.line, [x, y_ct]);
+                    s.interpolation = "cardinal";
+                    var s2 = myChart.addSeries("Destinations", dimple.plot.line, [x, y_dt]);
+                    s2.interpolation = "cardinal";
+                    var leg = myChart.addLegend(60, 10, 500, 20, "left");
+
+                    svg.selectAll("path.dimple-proj").style("stroke-dasharray", "2"); // Some minor stying changes using the svg selectAll statement. Make the projected data a dashed line and the grid colour lighter.
+                    svg.selectAll("path.domain").style("stroke", "#fff");
+                    svg.selectAll("g.tick line").style("stroke", "#fff");
+
+                    myChart.draw();
+                    x.titleShape.style("fill", "white");
+                    y_ct.titleShape.style("fill", "white");
+                    y_dt.titleShape.style("fill", "white");
+                    x.shapes.selectAll("text").style("fill", "white");
+                    y_ct.shapes.selectAll("*").attr("fill", "#FFFFFF");
+                    y_dt.shapes.selectAll("*").attr("fill", "#FFFFFF");
+                    leg.shapes.selectAll("text").style("fill", "white");
+
+
+
+
+                } else {
+
+                    // clear all animations
+
+                    for (var i = 1; i < playStep; i++)
+                        window.clearInterval(i);
+                    window.clearInterval(playStep);
+                    // reset dash-array & opacity
+                    map.setPaintProperty("flow_lines", 'line-dasharray', [1, 1]);
+                    map.setPaintProperty("flow_lines", 'line-opacity', 0.1);
+                    map.setPaintProperty("flow_lines", 'line-width', 1);
+                    // display all flows
+                    map.setFilter('flow_lines', undefined);
+                    document.getElementById('callinginfo').innerHTML = "";
+                    document.getElementById('selectedaAREA').innerHTML = "Calling Activities Fluctuation Index";
+                    document.getElementById('AREAinfo').innerHTML = "Description and chart";
+
+                }
+            });
+
+        });
+
+
+
+        // Add Zoom 
+        map.addControl(new mapboxgl.NavigationControl());
+
+    </script>
+
+
+
+
+
+
+
+
+
+
+</body>
+
+</html>
